@@ -40,6 +40,9 @@ package
 		
 		private var ledState:Boolean = false;
 		
+		private var firstDigitalPin:Number = 2;
+		private var lastDigitalPin:Number = 53;
+		
 		public function Ideum3()
 		{
 			initArduino();
@@ -63,23 +66,25 @@ package
 			try {
 				arduino = new Arduino();
 					
-
 				arduino.addEventListener(ArduinoEvent.FIRMWARE_VERSION, firmwareHandler);
 				arduino.addEventListener(ArduinoSysExEvent.SYSEX_MESSAGE, sysexHandler);
 			
 				writeButton();
 			} catch (e:Error) {
 				trace("Error: " + e);
+				status.text = e.getStackTrace();
 			}
 
 		}
 
 		private function setupArduino() {
 			//arduino.setAnalogPinReporting(0, Arduino.INPUT);
+			arduino.resetBoard();
+			
 			arduino.enableDigitalPinReporting();
 			
 			
-			for (var i = 2; i<=12; i++) {
+			for (var i = firstDigitalPin; i<=lastDigitalPin; i++) {
 				if (i == 13) continue; // LED is being used for output
 				arduino.setPinMode(i, Arduino.INPUT);
 			}
@@ -98,6 +103,7 @@ package
 		protected function firmwareHandler(event:ArduinoEvent):void
 		{
 			trace(event);
+			
 			setupArduino();
 			
 			frameHandler(event);
@@ -181,11 +187,12 @@ package
 			status.appendText( "Firmware: " + arduino.getFirmwareVersion() + "\n");
 			//status.appendText("Pin A0: " + arduino.getAnalogData(0) + "\n");
 
-			for (var i:int = 2; i<=12; i++) {
-				if (i == 13) {
+			for (var i = 0; i<=lastDigitalPin; i++) {
+				if ((i<firstDigitalPin) || (i == 13)) {
 					status.text += 'L';
 					continue; // LED is being used for output
 				}
+				
 				try {
 					//status.text += arduino.getDigitalData(i) ? 'X':'O';
 					//arduino.setPinMode(i, Arduino.INPUT);
