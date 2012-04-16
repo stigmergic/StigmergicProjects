@@ -12,7 +12,7 @@ serial_device1=/dev/cu.usbmodem411
 comm_ports=1,2,3,4
 
 # Default settings
-comm_baud=9600
+comm_baud=115200
 comm_databits=8
 comm_stopbits=1
 comm_parity=none

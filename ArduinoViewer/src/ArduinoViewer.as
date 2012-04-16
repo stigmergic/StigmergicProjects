@@ -42,6 +42,9 @@ package
 		
 		private var firstDigitalPin:Number = 2;
 		private var lastDigitalPin:Number = 53;
+
+		private var firstAnalogPin:Number = 0;
+		private var lastAnalogPin:Number = 15;
 		
 		public function ArduinoViewer()
 		{
@@ -89,6 +92,10 @@ package
 				arduino.setPinMode(i, Arduino.INPUT);
 			}
 
+			for (var i = firstAnalogPin; i<=lastAnalogPin; i++) {
+				arduino.setAnalogPinReporting(i, Arduino.INPUT);
+			}
+			
 			arduino.addEventListener(ArduinoEvent.ANALOG_DATA, analogHandler);
 			arduino.addEventListener(ArduinoEvent.DIGITAL_DATA, digitalHandler);
 		}
@@ -187,7 +194,7 @@ package
 			status.appendText( "Firmware: " + arduino.getFirmwareVersion() + "\n");
 			//status.appendText("Pin A0: " + arduino.getAnalogData(0) + "\n");
 
-			for (var i = 0; i<=lastDigitalPin; i++) {
+			for (var i=0; i<=lastDigitalPin; i++) {
 				if ((i<firstDigitalPin) || (i == 13)) {
 					status.text += 'L';
 					continue; // LED is being used for output
@@ -196,11 +203,21 @@ package
 				try {
 					//status.text += arduino.getDigitalData(i) ? 'X':'O';
 					//arduino.setPinMode(i, Arduino.INPUT);
-					status.text += arduino.getDigitalData(i);
+					status.appendText(arduino.getDigitalData(i).toString());
 				} catch (e:Error) {
-					status.text += '@';
+					status.appendText( '@' );
 				}
-				status.text +=  ((i+1) % 10 == 0) ? "\n" : "";
+				status.appendText( ((i+1) % 10 == 0) ? "\n" : "" );
+			}
+			
+			for (var i=firstAnalogPin; i <= lastAnalogPin; i++) {
+				try {
+					//status.text += arduino.getDigitalData(i) ? 'X':'O';
+					//arduino.setPinMode(i, Arduino.INPUT);
+					status.appendText(arduino.getAnalogData(i).toString() + "\n");
+				} catch (e:Error) {
+					status.appendText( '@\n' );
+				}				
 			}
 
 			
