@@ -5,7 +5,12 @@
  * 		Background color change on the button
  * 		Exception handling when lost connection with arduino -- Could be problem if arduino just loses power...
  * 		Reading the digital pin.  Unable to read analog so far. 
- * 
+ *  April 16
+ * 		Analog input is working
+ * 		Re-worked how the data is read, now completely event based
+ * 		Poteiometer (analog) reading is scaled between 0 and 1.0
+ * 		Still need some work to get things going at the start (reset board required, sometimes twice)
+ * 		
  * 
  * 
  * 
@@ -40,11 +45,14 @@ package
 		
 		private var ledState:Boolean = false;
 		
-		private var firstDigitalPin:Number = 2;
-		private var lastDigitalPin:Number = 53;
+		private const firstDigitalPin:Number = 2;
+		private const lastDigitalPin:Number = 53;
 
-		private var firstAnalogPin:Number = 0;
-		private var lastAnalogPin:Number = 15;
+		private const firstAnalogPin:Number = 0;
+		private const lastAnalogPin:Number = 5;//15;
+		
+		private var digitalPins:Array = new Array(lastDigitalPin+1);
+		private var analogPins:Array = new Array(lastAnalogPin+1);
 		
 		public function ArduinoViewer()
 		{
@@ -67,8 +75,10 @@ package
 		protected function initArduino() {
 			trace("starting connection...");
 			try {
-				arduino = new Arduino();
-					
+				arduino = new Arduino("127.0.0.1",5331);
+
+				arduino.addEventListener(Event.CONNECT,onSocketConnect);
+				arduino.addEventListener(Event.CLOSE,onSocketClose);
 				arduino.addEventListener(ArduinoEvent.FIRMWARE_VERSION, firmwareHandler);
 				arduino.addEventListener(ArduinoSysExEvent.SYSEX_MESSAGE, sysexHandler);
 			
@@ -87,17 +97,29 @@ package
 			arduino.enableDigitalPinReporting();
 			
 			
+			
 			for (var i = firstDigitalPin; i<=lastDigitalPin; i++) {
 				if (i == 13) continue; // LED is being used for output
 				arduino.setPinMode(i, Arduino.INPUT);
+				digitalPins[i] = 0;
 			}
 
 			for (var i = firstAnalogPin; i<=lastAnalogPin; i++) {
-				arduino.setAnalogPinReporting(i, Arduino.INPUT);
+				arduino.setAnalogPinReporting(i, Arduino.ON);
+				analogPins[i] = 0;
 			}
 			
 			arduino.addEventListener(ArduinoEvent.ANALOG_DATA, analogHandler);
 			arduino.addEventListener(ArduinoEvent.DIGITAL_DATA, digitalHandler);
+		}
+		
+		private function onSocketConnect(e:Object):void {
+			trace("Socket connected!");
+			arduino.requestFirmwareVersion();
+		}
+		
+		private function onSocketClose(e:Object):void {
+			trace("Socket closed!");
 		}
 		
 		protected function sysexHandler(event:ArduinoSysExEvent):void
@@ -118,14 +140,24 @@ package
 		
 		protected function digitalHandler(event:ArduinoEvent):void
 		{
-			trace(event);
+			var pin:Number = event.pin;
+			var value:Number = event.value;
+
+			digitalPins[pin] = value;
+			
+			//trace("Digital Pin: " + pin + " val: " + value);
 			
 			frameHandler(event);
 		}
 		
 		protected function analogHandler(event:ArduinoEvent):void
 		{
-			trace(event);
+			var pin:Number = event.pin;
+			var value:Number = event.value;
+			
+			analogPins[pin] = value/1023.0;
+
+			//trace("Analog Pin: " + pin + " val: " + value);
 			
 			frameHandler(event);
 		}
@@ -180,48 +212,73 @@ package
 		}
 
 
-		private function pinState():void {
+		private function digitalPinState():String {
+			var status:String = "";
 			
+			for (var i:int=0; i<=lastDigitalPin; i++) {
+				if ((i<firstDigitalPin) || (i == 13)) {
+					status += 'L';
+					continue; // LED is being used for output
+				}
+				
+				try {
+					//status += arduino.getDigitalData(i).toString();
+					status += digitalPins[i].toString();
+				} catch (e:Error) {
+					status += '@';
+				}
+				status += ((i+1) % 10 == 0) ? "\n" : "";
+			}
+			status += '\n';
+			
+			return status;
+		}
+		
+		private function analogPinState():String {
+			var status:String = "";
+			for (var i:int=firstAnalogPin; i <= lastAnalogPin; i++) {
+				try {
+					//status += arduino.getAnalogData(i).toString() + " ";
+					status += numberFormat(analogPins[i], 3, true) + " ";
+				} catch (e:Error) {
+					status += '@\n' ;
+				}				
+				status += ( ((i+1) % 5 == 0) ? "\n" : "" );
+			}
+			
+			return status;
+		}
+		
+		private function pinState():String {
+			var status:String = digitalPinState();
+			status += analogPinState();
+			return status;
 		}
 		
 		private function frameHandler(event:Event):void {
 			writeButton();
 			updateButton();
-						
-			
-			status.text =  "";
-			//status.text += "connected: " + arduino.connected + "\n";
+												
+			status.text = "";
 			status.appendText( "Firmware: " + arduino.getFirmwareVersion() + "\n");
-			//status.appendText("Pin A0: " + arduino.getAnalogData(0) + "\n");
-
-			for (var i=0; i<=lastDigitalPin; i++) {
-				if ((i<firstDigitalPin) || (i == 13)) {
-					status.text += 'L';
-					continue; // LED is being used for output
-				}
-				
-				try {
-					//status.text += arduino.getDigitalData(i) ? 'X':'O';
-					//arduino.setPinMode(i, Arduino.INPUT);
-					status.appendText(arduino.getDigitalData(i).toString());
-				} catch (e:Error) {
-					status.appendText( '@' );
-				}
-				status.appendText( ((i+1) % 10 == 0) ? "\n" : "" );
-			}
+			status.text += "connected: " + arduino.connected + "\n";
+			status.text +=  pinState();
 			
-			for (var i=firstAnalogPin; i <= lastAnalogPin; i++) {
-				try {
-					//status.text += arduino.getDigitalData(i) ? 'X':'O';
-					//arduino.setPinMode(i, Arduino.INPUT);
-					status.appendText(arduino.getAnalogData(i).toString() + "\n");
-				} catch (e:Error) {
-					status.appendText( '@\n' );
-				}				
+			//trace(status.text);			
+		}
+		
+		function numberFormat(number:*, maxDecimals:int = 2, forceDecimals:Boolean = false, siStyle:Boolean = false):String {
+			//This method from: http://snipplr.com/view.php?codeview&id=27081
+			var i:int = 0;
+			var inc:Number = Math.pow(10, maxDecimals);
+			var str:String = String(Math.round(inc * Number(number))/inc);
+			    	var hasSep:Boolean = str.indexOf(".") == -1, sep:int = hasSep ? str.length : str.indexOf(".");
+			    	var ret:String = (hasSep && !forceDecimals ? "" : (siStyle ? "," : ".")) + str.substr(sep+1);
+			    	if (forceDecimals) {
+				for (var j:int = 0; j <= maxDecimals - (str.length - (hasSep ? sep-1 : sep)); j++) ret += "0";
 			}
-
-			
-			trace(status.text);			
+			    	while (i + 3 < (str.substr(0, 1) == "-" ? sep-1 : sep)) ret = (siStyle ? "." : ",") + str.substr(sep - (i += 3), 3) + ret;
+			    	return str.substr(0, sep - i) + ret;
 		}
 	}
 	
