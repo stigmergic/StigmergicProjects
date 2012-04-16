@@ -30,7 +30,7 @@ package
 	import net.eriksjodin.arduino.events.ArduinoEvent;
 	import net.eriksjodin.arduino.events.ArduinoSysExEvent;
 	
-	public class Ideum3 extends Sprite
+	public class ArduinoViewer extends Sprite
 	{
 		private var arduino:Arduino;
 		private var button:Sprite;
@@ -43,7 +43,7 @@ package
 		private var firstDigitalPin:Number = 2;
 		private var lastDigitalPin:Number = 53;
 		
-		public function Ideum3()
+		public function ArduinoViewer()
 		{
 			initArduino();
 			
