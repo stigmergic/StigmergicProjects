@@ -49,10 +49,12 @@ package
 		private const lastDigitalPin:Number = 53;
 
 		private const firstAnalogPin:Number = 0;
-		private const lastAnalogPin:Number = 5;//15;
+		private const lastAnalogPin:Number = 15;//15;
 		
 		private var digitalPins:Array = new Array(lastDigitalPin+1);
 		private var analogPins:Array = new Array(lastAnalogPin+1);
+		
+		private var lastRFID:String = ""; 
 		
 		public function ArduinoViewer()
 		{
@@ -72,7 +74,7 @@ package
 			addChild(status);
 		}
 
-		protected function initArduino() {
+		protected function initArduino():void {
 			trace("starting connection...");
 			try {
 				arduino = new Arduino("127.0.0.1",5331);
@@ -90,21 +92,21 @@ package
 
 		}
 
-		private function setupArduino() {
+		private function setupArduino():void {
 			//arduino.setAnalogPinReporting(0, Arduino.INPUT);
 			arduino.resetBoard();
 			
 			arduino.enableDigitalPinReporting();
 			
 			
-			
-			for (var i = firstDigitalPin; i<=lastDigitalPin; i++) {
+			var i:Number;
+			for (i = firstDigitalPin; i<=lastDigitalPin; i++) {
 				if (i == 13) continue; // LED is being used for output
 				arduino.setPinMode(i, Arduino.INPUT);
 				digitalPins[i] = 0;
 			}
 
-			for (var i = firstAnalogPin; i<=lastAnalogPin; i++) {
+			for (i = firstAnalogPin; i<=lastAnalogPin; i++) {
 				arduino.setAnalogPinReporting(i, Arduino.ON);
 				analogPins[i] = 0;
 			}
@@ -125,6 +127,16 @@ package
 		protected function sysexHandler(event:ArduinoSysExEvent):void
 		{
 			trace(event);
+			var value:String = event.data.toString();
+			trace("value: " + value);
+			
+			if (value.substring(0,5) == "RFID:") {
+				var vals:Array = value.substring(5).split(':');
+				if (vals.length == 2) {
+					if (vals[1]=='1') lastRFID = vals[0];
+				}
+				
+			}
 			
 			frameHandler(event);
 		}
@@ -173,8 +185,10 @@ package
 		
 		private function writeButton():void {
 			try {
+
 				arduino.setPinMode(13, Arduino.OUTPUT);
-				arduino.writeDigitalPin(13, ledState?Arduino.HIGH:Arduino.LOW);				
+				arduino.writeDigitalPin(13, ledState?Arduino.HIGH:Arduino.LOW);	
+			
 			} catch (e:Error) {
 				trace('Error: ' + e + "\ntype: " + e.errorID + " " );
 				
@@ -206,6 +220,7 @@ package
 		}
 		
 		private function toggleHandler(event:Event):void {
+			
 			toggleButton();
 
 			trace("Button: " + buttonLabel.text);			
@@ -261,13 +276,14 @@ package
 												
 			status.text = "";
 			status.appendText( "Firmware: " + arduino.getFirmwareVersion() + "\n");
-			status.text += "connected: " + arduino.connected + "\n";
-			status.text +=  pinState();
+			status.appendText( "connected: " + arduino.connected + "\n" );
+			status.appendText(  pinState() + "\n" );
+			status.appendText( "last RFID: " + lastRFID + "\n" );
 			
 			//trace(status.text);			
 		}
 		
-		function numberFormat(number:*, maxDecimals:int = 2, forceDecimals:Boolean = false, siStyle:Boolean = false):String {
+		private function numberFormat(number:*, maxDecimals:int = 2, forceDecimals:Boolean = false, siStyle:Boolean = false):String {
 			//This method from: http://snipplr.com/view.php?codeview&id=27081
 			var i:int = 0;
 			var inc:Number = Math.pow(10, maxDecimals);
