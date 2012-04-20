@@ -11,19 +11,19 @@
 
 /*
   Copyright (C) 2006-2008 Hans-Christoph Steiner.  All rights reserved.
-  Copyright (C) 2010-2011 Paul Stoffregen.  All rights reserved.
-  Copyright (C) 2009 Shigeru Kobayashi.  All rights reserved.
-  Copyright (C) 2009-2011 Jeff Hoefs.  All rights reserved.
-  
-  This library is free software; you can redistribute it and/or
-  modify it under the terms of the GNU Lesser General Public
-  License as published by the Free Software Foundation; either
-  version 2.1 of the License, or (at your option) any later version.
+ Copyright (C) 2010-2011 Paul Stoffregen.  All rights reserved.
+ Copyright (C) 2009 Shigeru Kobayashi.  All rights reserved.
+ Copyright (C) 2009-2011 Jeff Hoefs.  All rights reserved.
  
-  See file LICENSE.txt for further informations on licensing terms.
-
-  formatted using the GNU C formatting and indenting
-*/
+ This library is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Lesser General Public
+ License as published by the Free Software Foundation; either
+ version 2.1 of the License, or (at your option) any later version.
+ 
+ See file LICENSE.txt for further informations on licensing terms.
+ 
+ formatted using the GNU C formatting and indenting
+ */
 
 /* 
  * TODO: use Program Control to load stored profiles from EEPROM
@@ -32,6 +32,10 @@
 #include <Servo.h>
 #include <Wire.h>
 #include <Firmata.h>
+
+#include <SoftwareSerial.h>
+
+SoftwareSerial mySerial(50, 51, false);
 
 // move the following defines to Firmata.h?
 #define I2C_WRITE B00000000
@@ -93,14 +97,15 @@ void readAndReportData(byte address, int theRegister, byte numBytes) {
   // do not always require the register read so upon interrupt you call Wire.requestFrom()  
   if (theRegister != REGISTER_NOT_SPECIFIED) {
     Wire.beginTransmission(address);
-    #if ARDUINO >= 100
+#if ARDUINO >= 100
     Wire.write((byte)theRegister);
-    #else
+#else
     Wire.send((byte)theRegister);
-    #endif
+#endif
     Wire.endTransmission();
     delayMicroseconds(i2cReadDelayTime);  // delay is necessary for some devices such as WiiNunchuck
-  } else {
+  } 
+  else {
     theRegister = 0;  // fill the register with a dummy value
   }
 
@@ -111,17 +116,18 @@ void readAndReportData(byte address, int theRegister, byte numBytes) {
     i2cRxData[0] = address;
     i2cRxData[1] = theRegister;
     for (int i = 0; i < numBytes; i++) {
-      #if ARDUINO >= 100
+#if ARDUINO >= 100
       i2cRxData[2 + i] = Wire.read();
-      #else
+#else
       i2cRxData[2 + i] = Wire.receive();
-      #endif
+#endif
     }
   }
   else {
     if(numBytes > Wire.available()) {
       Firmata.sendString("I2C Read Error: Too many bytes received");
-    } else {
+    } 
+    else {
       Firmata.sendString("I2C Read Error: Too few bytes received"); 
     }
   }
@@ -187,7 +193,8 @@ void setPinModeCallback(byte pin, int mode)
   if (IS_PIN_DIGITAL(pin)) {
     if (mode == INPUT) {
       portConfigInputs[pin/8] |= (1 << (pin & 7));
-    } else {
+    } 
+    else {
       portConfigInputs[pin/8] &= ~(1 << (pin & 7));
     }
   }
@@ -227,7 +234,7 @@ void setPinModeCallback(byte pin, int mode)
     if (IS_PIN_SERVO(pin)) {
       pinConfig[pin] = SERVO;
       if (!servos[PIN_TO_SERVO(pin)].attached()) {
-          servos[PIN_TO_SERVO(pin)].attach(PIN_TO_DIGITAL(pin));
+        servos[PIN_TO_SERVO(pin)].attach(PIN_TO_DIGITAL(pin));
       }
     }
     break;
@@ -251,12 +258,12 @@ void analogWriteCallback(byte pin, int value)
     case SERVO:
       if (IS_PIN_SERVO(pin))
         servos[PIN_TO_SERVO(pin)].write(value);
-        pinState[pin] = value;
+      pinState[pin] = value;
       break;
     case PWM:
       if (IS_PIN_PWM(pin))
         analogWrite(PIN_TO_PWM(pin), value);
-        pinState[pin] = value;
+      pinState[pin] = value;
       break;
     }
   }
@@ -297,7 +304,8 @@ void reportAnalogCallback(byte analogPin, int value)
   if (analogPin < TOTAL_ANALOG_PINS) {
     if(value == 0) {
       analogInputsToReport = analogInputsToReport &~ (1 << analogPin);
-    } else {
+    } 
+    else {
       analogInputsToReport = analogInputsToReport | (1 << analogPin);
     }
   }
@@ -328,7 +336,7 @@ void sysexCallback(byte command, byte argc, byte *argv)
   byte slaveRegister;
   byte data;
   unsigned int delayTime; 
-  
+
   switch(command) {
   case I2C_REQUEST:
     mode = argv[1] & I2C_READ_WRITE_MODE_MASK;
@@ -345,11 +353,11 @@ void sysexCallback(byte command, byte argc, byte *argv)
       Wire.beginTransmission(slaveAddress);
       for (byte i = 2; i < argc; i += 2) {
         data = argv[i] + (argv[i + 1] << 7);
-        #if ARDUINO >= 100
+#if ARDUINO >= 100
         Wire.write(data);
-        #else
+#else
         Wire.send(data);
-        #endif
+#endif
       }
       Wire.endTransmission();
       delayMicroseconds(70);
@@ -379,12 +387,13 @@ void sysexCallback(byte command, byte argc, byte *argv)
       query[queryIndex].bytes = argv[4] + (argv[5] << 7);
       break;
     case I2C_STOP_READING:
-	  byte queryIndexToSkip;      
+      byte queryIndexToSkip;      
       // if read continuous mode is enabled for only 1 i2c device, disable
       // read continuous reporting for that device
       if (queryIndex <= 0) {
         queryIndex = -1;        
-      } else {
+      } 
+      else {
         // if read continuous mode is enabled for multiple devices,
         // determine which device to stop reading and remove it's data from
         // the array, shifiting other array data to fill the space
@@ -394,7 +403,7 @@ void sysexCallback(byte command, byte argc, byte *argv)
             break;
           }
         }
-        
+
         for (byte i = queryIndexToSkip; i<queryIndex + 1; i++) {
           if (i < MAX_QUERIES) {
             query[i].addr = query[i+1].addr;
@@ -419,7 +428,7 @@ void sysexCallback(byte command, byte argc, byte *argv)
     if (!isI2CEnabled) {
       enableI2CPins();
     }
-    
+
     break;
   case SERVO_CONFIG:
     if(argc > 4) {
@@ -442,7 +451,8 @@ void sysexCallback(byte command, byte argc, byte *argv)
       if (samplingInterval < MINIMUM_SAMPLING_INTERVAL) {
         samplingInterval = MINIMUM_SAMPLING_INTERVAL;
       }      
-    } else {
+    } 
+    else {
       //Firmata.sendString("Not enough data");
     }
     break;
@@ -492,9 +502,9 @@ void sysexCallback(byte command, byte argc, byte *argv)
       Serial.write(pin);
       if (pin < TOTAL_PINS) {
         Serial.write((byte)pinConfig[pin]);
-	Serial.write((byte)pinState[pin] & 0x7F);
-	if (pinState[pin] & 0xFF80) Serial.write((byte)(pinState[pin] >> 7) & 0x7F);
-	if (pinState[pin] & 0xC000) Serial.write((byte)(pinState[pin] >> 14) & 0x7F);
+        Serial.write((byte)pinState[pin] & 0x7F);
+        if (pinState[pin] & 0xFF80) Serial.write((byte)(pinState[pin] >> 7) & 0x7F);
+        if (pinState[pin] & 0xC000) Serial.write((byte)(pinState[pin] >> 14) & 0x7F);
       }
       Serial.write(END_SYSEX);
     }
@@ -521,20 +531,20 @@ void enableI2CPins()
       setPinModeCallback(i, I2C);
     } 
   }
-   
+
   isI2CEnabled = true; 
-  
+
   // is there enough time before the first I2C request to call this here?
   Wire.begin();
 }
 
 /* disable the i2c pins so they can be used for other functions */
 void disableI2CPins() {
-    isI2CEnabled = false;
-    // disable read continuous mode for all devices
-    queryIndex = -1;
-    // uncomment the following if or when the end() method is added to Wire library
-    // Wire.end();
+  isI2CEnabled = false;
+  // disable read continuous mode for all devices
+  queryIndex = -1;
+  // uncomment the following if or when the end() method is added to Wire library
+  // Wire.end();
 }
 
 /*==============================================================================
@@ -546,7 +556,7 @@ void systemResetCallback()
   // initialize a defalt state
   // TODO: option to load config from EEPROM instead of default
   if (isI2CEnabled) {
-  	disableI2CPins();
+    disableI2CPins();
   }
   for (byte i=0; i < TOTAL_PORTS; i++) {
     reportPINs[i] = false;      // by default, reporting off
@@ -559,7 +569,8 @@ void systemResetCallback()
     if (IS_PIN_ANALOG(i)) {
       // turns off pullup, configures everything
       setPinModeCallback(i, ANALOG);
-    } else {
+    } 
+    else {
       // sets the output to 0, configures portConfigInputs
       setPinModeCallback(i, OUTPUT);
     }
@@ -571,11 +582,11 @@ void systemResetCallback()
    * since once in the loop(), this firmware will only send on change */
   /*
   TODO: this can never execute, since no pins default to digital input
-        but it will be needed when/if we support EEPROM stored config
-  for (byte i=0; i < TOTAL_PORTS; i++) {
-    outputPort(i, readPort(i, portConfigInputs[i]), true);
-  }
-  */
+   but it will be needed when/if we support EEPROM stored config
+   for (byte i=0; i < TOTAL_PORTS; i++) {
+   outputPort(i, readPort(i, portConfigInputs[i]), true);
+   }
+   */
 }
 
 void setup() 
@@ -592,7 +603,81 @@ void setup()
 
   Firmata.begin(115200);
   systemResetCallback();  // reset to default config
+
+  mySerial.begin(9600);
 }
+
+void readcard() {
+  byte val;
+  byte i = 0;
+  byte code[6];
+  byte checksum = 0;
+  byte bytesread = 0;
+  byte tempbyte = 0;
+
+  if((val = mySerial.read()) == 2) {                  // check for header 
+    bytesread = 0; 
+    while (bytesread < 12) {                        // read 10 digit code + 2 digit checksum
+      if( mySerial.available() > 0) { 
+        val = mySerial.read();
+        if((val == 0x0D)||(val == 0x0A)||(val == 0x03)||(val == 0x02)) { // if header or stop bytes before the 10 digit reading 
+          break;                                    // stop reading
+        }
+
+        // Do Ascii/Hex conversion:
+        if ((val >= '0') && (val <= '9')) {
+          val = val - '0';
+        } 
+        else if ((val >= 'A') && (val <= 'F')) {
+          val = 10 + val - 'A';
+        }
+
+        // Every two hex-digits, add byte to code:
+        if (bytesread & 1 == 1) {
+          // make some space for this hex-digit by
+          // shifting the previous hex-digit with 4 bits to the left:
+          code[bytesread >> 1] = (val | (tempbyte << 4));
+
+          if (bytesread >> 1 != 5) {                // If we're at the checksum byte,
+            checksum ^= code[bytesread >> 1];       // Calculate the checksum... (XOR)
+          };
+        } 
+        else {
+          tempbyte = val;                           // Store the first hex digit first...
+        };
+
+        bytesread++;                                // ready to read next digit
+      } 
+    } 
+
+    // Output to Serial:
+    if (bytesread == 12) {
+
+      // if 12 digit read is complete
+
+      Serial.write(START_SYSEX);
+      Serial.write("RFID:");
+      //Serial.print("5-byte code: ");
+      for (i=0; i<5; i++) {
+        if (code[i] < 16) Serial.print("0");
+        Serial.print(code[i], HEX);
+        //Serial.print(" ");
+      }
+      //Serial.println();
+
+      //Serial.print("Checksum: ");
+      //Serial.print(checksum, HEX);
+      //Serial.print(" read Checksum: ");
+      //Serial.print(code[5], HEX);
+      Serial.print(code[5] == checksum ? ":1" : ":0");
+      //Serial.println();
+      Serial.write(END_SYSEX);
+    }
+
+    bytesread = 0;
+  }
+}
+
 
 /*==============================================================================
  * LOOP()
@@ -633,4 +718,11 @@ void loop()
       }
     }
   }
+
+
+  if (mySerial.available() > 0) {
+    readcard();
+  }
+
 }
+
