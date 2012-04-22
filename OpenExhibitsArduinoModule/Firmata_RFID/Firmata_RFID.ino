@@ -616,10 +616,13 @@ void readcard() {
   byte tempbyte = 0;
 
   if((val = mySerial.read()) == 2) {                  // check for header 
+    //Serial.write(START_SYSEX);
+
     bytesread = 0; 
     while (bytesread < 12) {                        // read 10 digit code + 2 digit checksum
       if( mySerial.available() > 0) { 
         val = mySerial.read();
+        //Serial.write(val);
         if((val == 0x0D)||(val == 0x0A)||(val == 0x03)||(val == 0x02)) { // if header or stop bytes before the 10 digit reading 
           break;                                    // stop reading
         }
@@ -648,6 +651,8 @@ void readcard() {
 
         bytesread++;                                // ready to read next digit
       } 
+      //Serial.write(END_SYSEX);
+
     } 
 
     // Output to Serial:
